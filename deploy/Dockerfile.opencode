@@ -1,0 +1,39 @@
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y \
+    git curl wget ca-certificates unzip procps python3 \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+# Install OpenCode
+RUN bun install -g opencode-ai@latest
+
+# Pre-cache Context7 MCP
+RUN bunx --bun @upstash/context7-mcp --version 2>/dev/null || true
+
+# Pre-warm OpenCode SQLite so containers start fast at runtime
+RUN opencode serve --port 4096 --hostname 0.0.0.0 & \
+    OC_PID=$!; \
+    READY=0; \
+    for i in $(seq 1 90); do \
+      sleep 2; \
+      if curl -s --max-time 3 http://0.0.0.0:4096/ >/dev/null 2>&1; then \
+        READY=1; break; \
+      fi; \
+    done; \
+    kill $OC_PID 2>/dev/null || true; \
+    wait $OC_PID 2>/dev/null || true; \
+    echo "Pre-warm done (ready=$READY)"
+
+WORKDIR /workspace
+
+EXPOSE 4096
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:4096/session/status || exit 1
+
+CMD ["opencode", "serve", "--port", "4096", "--hostname", "0.0.0.0"]
