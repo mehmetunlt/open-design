@@ -41,19 +41,30 @@ services:
 
   opencode:
     container_name: opencode
-    image: ${OPENCODE_IMAGE:-docker.io/opencode:latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.opencode
     restart: always
-    environment:
-      NODE_ENV: production
     ports:
-      - "127.0.0.1:${OPENCODE_PORT:-8080}:8080"
+      - "127.0.0.1:${OPENCODE_PORT:-4096}:4096"
     volumes:
-      - opencode_data:/app/data
-    read_only: false
+      - opencode_data:/workspace
     security_opt:
       - no-new-privileges:true
-    mem_limit: ${OPENCODE_MEM_LIMIT:-512m}
+    mem_limit: ${OPENCODE_MEM_LIMIT:-1024m}
     pids_limit: 256
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-qO-",
+          "http://127.0.0.1:4096/session/status"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   open_design_data:
