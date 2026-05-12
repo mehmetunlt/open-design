@@ -68,9 +68,19 @@ RUN pnpm --filter @open-design/daemon build && \
 
 FROM ${RUNTIME_IMAGE}
 
-RUN apk add --no-cache tini && \
+RUN apk add --no-cache tini git curl wget ca-certificates unzip procps python3 && \
     addgroup -S -g 1001 open-design && \
     adduser -S -D -H -u 1001 -G open-design open-design
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+# Install OpenCode
+RUN bun install -g opencode-ai@latest
+
+# Pre-cache Context7 MCP
+RUN bunx --bun @upstash/context7-mcp --version 2>/dev/null || true
 
 WORKDIR /app
 COPY --from=build --chown=open-design:open-design /app/deploy/daemon ./apps/daemon
@@ -90,8 +100,23 @@ ENV NODE_OPTIONS=--max-old-space-size=192
 ENV OD_BIND_HOST=0.0.0.0
 ENV OD_PORT=7456
 
-EXPOSE 7456
+EXPOSE 7456 4096
 
 USER open-design
+
+# Pre-warm OpenCode SQLite so container starts fast at runtime
+RUN opencode serve --port 4096 --hostname 0.0.0.0 & \
+    OC_PID=$!; \
+    READY=0; \
+    for i in $(seq 1 90); do \
+      sleep 2; \
+      if curl -s --max-time 3 http://0.0.0.0:4096/ >/dev/null 2>&1; then \
+        READY=1; break; \
+      fi; \
+    done; \
+    kill $OC_PID 2>/dev/null || true; \
+    wait $OC_PID 2>/dev/null || true; \
+    echo "Pre-warm done (ready=$READY)"
+
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/daemon/dist/cli.js", "--no-open"]
