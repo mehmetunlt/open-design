@@ -76,12 +76,13 @@ RUN apk add --no-cache tini git curl wget ca-certificates unzip procps python3 b
 ENV BUN_INSTALL=/usr/local
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Install OpenCode via the upstream install script.
-# bun install -g skips lifecycle scripts, so the opencode-ai npm wrapper's
-# postinstall (which fetches the platform binary) never runs and the wrapper
-# fails with `spawn .../bin/.opencode ENOENT`. The official script downloads
-# the binary directly and supports OPENCODE_INSTALL_DIR for system-wide install.
-RUN OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
+# Install OpenCode via the upstream install script (handles Alpine/musl detection).
+# The script hardcodes INSTALL_DIR=$HOME/.opencode/bin, so as root it lands in
+# /root/.opencode/bin which is unreadable by the non-root runtime user. Move the
+# binary to /usr/local/bin (already on PATH, world-readable) and drop the rest.
+RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && \
+    mv /root/.opencode/bin/opencode /usr/local/bin/opencode && \
+    rm -rf /root/.opencode
 
 # Pre-cache Context7 MCP
 RUN bunx --bun @upstash/context7-mcp --version 2>/dev/null || true
