@@ -96,8 +96,10 @@ COPY --chown=open-design:open-design craft ./craft
 COPY --chown=open-design:open-design prompt-templates ./prompt-templates
 COPY --chown=open-design:open-design assets/frames ./assets/frames
 COPY --chown=open-design:open-design assets/community-pets ./assets/community-pets
+COPY --chown=open-design:open-design deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN mkdir -p /app/.od && \
+    chmod +x /usr/local/bin/entrypoint.sh && \
     chown -R open-design:open-design /app
 
 ENV NODE_ENV=production
@@ -124,4 +126,4 @@ RUN opencode serve --port 4096 --hostname 0.0.0.0 & \
     echo "Pre-warm done (ready=$READY)"
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "apps/daemon/dist/cli.js", "--no-open"]
+CMD ["/usr/local/bin/entrypoint.sh"]
