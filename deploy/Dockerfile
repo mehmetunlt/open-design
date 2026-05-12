@@ -70,7 +70,7 @@ FROM ${RUNTIME_IMAGE}
 
 RUN apk add --no-cache tini git curl wget ca-certificates unzip procps python3 bash && \
     addgroup -S -g 1001 open-design && \
-    adduser -S -D -H -u 1001 -G open-design open-design
+    adduser -S -D -u 1001 -G open-design open-design
 
 # Install Bun system-wide so non-root users can run it
 ENV BUN_INSTALL=/usr/local
