@@ -20,6 +20,7 @@ services:
       - "127.0.0.1:${OPENCODE_PORT:-4096}:4096"
     volumes:
       - open_design_data:/app/.od
+      - open_design_home:/home/open-design
     read_only: true
     tmpfs:
       - /tmp
@@ -42,3 +43,4 @@ services:
 
 volumes:
   open_design_data:
+  open_design_home:
