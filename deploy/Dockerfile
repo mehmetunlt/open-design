@@ -72,11 +72,11 @@ RUN apk add --no-cache tini git curl wget ca-certificates unzip procps python3 b
     addgroup -S -g 1001 open-design && \
     adduser -S -D -H -u 1001 -G open-design open-design
 
-# Install Bun
+# Install Bun system-wide so non-root users can run it
+ENV BUN_INSTALL=/usr/local
 RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
 
-# Install OpenCode
+# Install OpenCode globally (lands in /usr/local/bin)
 RUN bun install -g opencode-ai@latest
 
 # Pre-cache Context7 MCP
